@@ -1,4 +1,4 @@
-# UR17 - Cutting & Slicing - P2
+# USlicing - Cutting & Slicing
 
 ## Table of Contents
 
@@ -6,7 +6,6 @@
 |:----:|--------|
 |1| [Features](#features) |
 |2| [Documentation](#documentation) |
-|3| [Todos](#todos)|
 |4| [Issues](#issues)|
 
 ## Features
@@ -32,9 +31,7 @@ These are all implemented Features that are available in this plugin.
 
 ## Documentation
 
-**__This is a summary of Previous Milestones ([1](Milestone1.md), [2](Milestone2.md), [3](Milestone3.md))__**
-
-The goal of this sub-project was a user-friendly plugin for a realistic cutting and slicing experience. To do so we've split it into two parts, namely **SlicingEditor** and **SlicingLogic**, splitting things needed in the Editor and Logic.
+The goal of this project was a user-friendly plugin for a realistic cutting and slicing experience. To do so we've split it into two parts, namely **SlicingEditor** and **SlicingLogic**, splitting things needed in the Editor and Logic.
 
 ### SlicingEditor
 This holds all code which works closely to the Editor itself and is responsible for things like, adding our menu into the Editor and it working as a bridge for our logic.
@@ -70,10 +67,6 @@ One of the more important classes, as this one holds the code and tools necessar
 
 #### SlicingLogicModule
 It's there to handle the module, starting and shutting it down.
-
-## Todos
-
-- Done
 
 ## Issues
 * **IMPORTANT.** Cutting only works on static meshes that only have "Convex Elements" as collision primitives. "Spheres", "Boxes" or "Capsules" do NOT work and result in the sliced object to just fall through the world instead of being cut. This is a limitation of the ```UKismetProceduralMeshLibrary::SliceProceduralMesh(...)``` function and cannot be (currently) changed.
