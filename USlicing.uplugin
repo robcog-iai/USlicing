@@ -1,0 +1,32 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "0.1",
+  "FriendlyName": "USlicing",
+  "Description": "Allows to make objects slicable and modify objects to be able to slice those slicable objects",
+  "Category": "RobCog",
+  "CreatedBy": "Andrei Haidu",
+  "CreatedByURL": "http://haidu.eu",
+  "DocsURL": "https://github.com/robcog-iai/USlicing",
+  "MarketplaceURL": "http://robcog.org/",
+  "SupportURL": "http://robcog.org/",
+  "CanContainContent": false,
+  "IsBetaVersion": true,
+  "Installed": false,
+  "Modules": [
+    {
+      "Name": "USlicingEditor",
+      "Type": "Editor"
+    },
+    {
+      "Name": "USlicingLogic",
+      "Type": "Runtime"
+    }
+  ],
+  "Plugins": [
+    {
+      "Name": "ProceduralMeshComponent",
+      "Enabled": true
+    }
+  ]
+}
