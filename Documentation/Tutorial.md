@@ -1,4 +1,4 @@
-# UR17 - P2
+# USlicing
 
 | Nr | Tutorials |
 |:----:|--------|
@@ -51,7 +51,7 @@ to refresh.
 ![OptimalLocation](TutorialPictures/OptimalComponentPosition.png)
 **Optimal Positions of the Component**
 
-[Top](#ur17---p2)
+[Top](#uslicing)
 
 ***
 
@@ -87,7 +87,7 @@ For example, changing 0 to 100 will make it look like this...
 
 ![TutorialPic10](TutorialPictures/12.PNG)  
 
-[Top](#ur17---p2)
+[Top](#uslicing)
 
 ## Give the Object an Inner Material
 
@@ -107,5 +107,5 @@ To create another slot, press the `+` Key. That will create another slot under y
 
 ![Innter Material](TutorialPictures/InnerMaterial.png)  
 **If done correctly, it should look like this.**  
-[Top](#ur17---p2)
+[Top](#uslicing)
 ***
