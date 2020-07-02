@@ -134,6 +134,12 @@ void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableCompone
 	TArray<FStaticMaterial> ComponentMaterials;
 	UMaterialInterface* InsideCutMaterialInterface = nullptr;
 	
+	FString OriginalName = CuttableComponent->GetOwner()->GetName();
+	USceneComponent* ParentComponent = CuttableComponent->GetAttachParent();
+	if (ParentComponent != NULL) {
+		CuttableComponent->DetachFromParent(true);
+	}
+
 	// In case the component is a StaticMeshComponent it needs to be converted into a ProceduralMeshComponent
 	if (CuttableComponent->IsA(UStaticMeshComponent::StaticClass()))
 	{
@@ -154,7 +160,8 @@ void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableCompone
 			break;
 		}
 	}
-	
+	UProceduralMeshComponent* proc = (UProceduralMeshComponent*)CuttableComponent;
+
 	UProceduralMeshComponent* OutputProceduralMesh;
 	UKismetProceduralMeshLibrary::SliceProceduralMesh(
 		(UProceduralMeshComponent*)CuttableComponent,
@@ -167,18 +174,29 @@ void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableCompone
 	);
 	OutputProceduralMesh->SetGenerateOverlapEvents(true);
 	OutputProceduralMesh->SetEnableGravity(true);
-	OutputProceduralMesh->SetSimulatePhysics(true);
+	OutputProceduralMesh->SetSimulatePhysics(CuttableComponent->IsSimulatingPhysics());
 	OutputProceduralMesh->ComponentTags = CuttableComponent->ComponentTags;
 	OutputProceduralMesh->SetLinearDamping(0.f);
 	OutputProceduralMesh->SetAngularDamping(0.f);
 
 	CuttableComponent->SetLinearDamping(0.f);
 	CuttableComponent->SetAngularDamping(0.f);
+	proc = (UProceduralMeshComponent*)CuttableComponent;
 
 	// Convert both seperated procedural meshes into static meshes for best compatibility
-	auto transformedObject = FSlicingHelper::ConvertProceduralComponentToStaticMeshActor((UProceduralMeshComponent*)CuttableComponent,
+	AStaticMeshActor* transformedObject = FSlicingHelper::ConvertProceduralComponentToStaticMeshActor((UProceduralMeshComponent*)CuttableComponent,
 		ComponentMaterials);
-	auto newSlice = FSlicingHelper::ConvertProceduralComponentToStaticMeshActor(OutputProceduralMesh, ComponentMaterials);
+	AStaticMeshActor* newSlice = FSlicingHelper::ConvertProceduralComponentToStaticMeshActor(OutputProceduralMesh, ComponentMaterials);
+	if (ParentComponent != NULL) {
+		FAttachmentTransformRules attachRules = FAttachmentTransformRules(
+			EAttachmentRule::KeepWorld,
+			EAttachmentRule::KeepWorld,
+			EAttachmentRule::KeepWorld,
+			true);
+
+		newSlice->AttachToComponent(ParentComponent, attachRules);
+		transformedObject->AttachToComponent(ParentComponent, attachRules);
+	}
 
 	// Broadcat creation of Slice and transformed object
 	OnObjectCreation.Broadcast(transformedObject, newSlice, GetWorld()->GetTimeSeconds());

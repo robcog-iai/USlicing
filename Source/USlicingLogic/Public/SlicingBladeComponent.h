@@ -65,6 +65,9 @@ public:
 	FVector RelativeLocationToCutComponent;
 	FQuat RelativeRotationToCutComponent;
 
+	/**** Attached parent in case object was attached ****/
+	USceneComponent* ParentComponent;
+
 	/**** Implementation of the overlap events for slicing/aborting the slicing ****/
 	UFUNCTION()
 	void OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
