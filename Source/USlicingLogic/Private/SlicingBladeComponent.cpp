@@ -32,12 +32,13 @@ void USlicingBladeComponent::BeginPlay()
 
 	// Register the overlap events
 	OnComponentBeginOverlap.AddDynamic(this, &USlicingBladeComponent::OnBeginOverlap);
-	OnComponentEndOverlap.AddDynamic(this, &USlicingBladeComponent::OnEndOverlap);
+	
 }
 
+#pragma optimize("", off)
 void USlicingBladeComponent::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{	
+{
 	// This event is only important if the other object can actually be cut or if another cut hasn't already started
 	if (!OtherComp->ComponentHasTag(TagCuttable) || bIsCurrentlyCutting)
 	{
@@ -48,6 +49,14 @@ void USlicingBladeComponent::OnBeginOverlap(UPrimitiveComponent* OverlappedComp,
 	{
 		return;
 	}
+
+	if (OtherComp == NULL || OverlappedComp == NULL) {
+		return;
+	}
+
+	// The cutting process has now started
+	// Quickly avoid other objects to enter slicing event
+	bIsCurrentlyCutting = true;
 
 	// Collision should only be ignored with the currently cut object, not the objects around it
 	SlicingObject->SetCollisionResponseToChannel(ECollisionChannel::ECC_PhysicsBody, ECollisionResponse::ECR_Overlap);
@@ -65,8 +74,13 @@ void USlicingBladeComponent::OnBeginOverlap(UPrimitiveComponent* OverlappedComp,
 		return;
 	}
 
-	// The cutting process has now started
-	bIsCurrentlyCutting = true;
+	// Abort if not overlapping anymore
+	if (!OverlappedComp->IsOverlappingComponent(OtherComp)) {
+		bIsCurrentlyCutting = false;
+		return;
+	}
+
+	OnComponentEndOverlap.AddDynamic(this, &USlicingBladeComponent::OnEndOverlap);
 	OnBeginSlicing.Broadcast(OverlappedComp->GetAttachmentRootActor(), OverlappedComp->GetOwner(), CutComponent->GetAttachmentRootActor(), GetWorld()->GetTimeSeconds());
 
 	// Makes the Cutting with Constraints possible, by somwehat disabling Gravity and Physics in a sense without actually deactivating them.
@@ -95,7 +109,7 @@ void USlicingBladeComponent::OnEndOverlap(UPrimitiveComponent* OverlappedComp, A
 		return;
 	}
 	// If you are touching and exiting another object while cutting, ignore the event
-	else if (OtherComp != CutComponent)
+	else if (OtherComp != CutComponent || OtherActor != CutComponent->GetOwner())
 	{
 		return;
 	}
@@ -128,6 +142,7 @@ void USlicingBladeComponent::OnEndOverlap(UPrimitiveComponent* OverlappedComp, A
 
 	ResetState();
 }
+#pragma optimize("", on)
 
 void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableComponent)
 {
@@ -231,7 +246,7 @@ void USlicingBladeComponent::ResetState()
 {
 	bIsCurrentlyCutting = false;
 	CutComponent = nullptr;
-
+	OnComponentEndOverlap.Clear();
 	ConstraintOne->BreakConstraint();
 
 	// Collision should turn back to normal again
