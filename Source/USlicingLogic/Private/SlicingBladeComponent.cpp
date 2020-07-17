@@ -193,6 +193,9 @@ void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableCompone
 	OutputProceduralMesh->ComponentTags = CuttableComponent->ComponentTags;
 	OutputProceduralMesh->SetLinearDamping(0.f);
 	OutputProceduralMesh->SetAngularDamping(0.f);
+	
+	// Hack
+	OutputProceduralMesh->AddWorldOffset(-1*SlicingObject->GetUpVector(), false);
 
 	CuttableComponent->SetLinearDamping(0.f);
 	CuttableComponent->SetAngularDamping(0.f);
