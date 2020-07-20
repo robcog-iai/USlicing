@@ -55,6 +55,8 @@ public:
 	//* Describes whether the cutting object is currently in the process of cutting a cuttable object
 	bool bIsCurrentlyCutting = false;
 
+	bool bLockOverlapEvents = false;
+
 	// The Constraints Component
 	UPhysicsConstraintComponent* ConstraintOne;
 
