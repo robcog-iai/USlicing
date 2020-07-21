@@ -88,7 +88,8 @@ void FSlicingHelper::CorrectProperties(UPrimitiveComponent* NewComponent, UPrimi
 {
 	NewComponent->SetRelativeTransform(OldComponent->GetRelativeTransform());
 	NewComponent->RegisterComponent();
-	NewComponent->SetCollisionProfileName(FName("PhysicsActor"));
+	NewComponent->SetCollisionProfileName(OldComponent->GetCollisionProfileName());
+	NewComponent->SetCollisionResponseToChannels(OldComponent->GetCollisionResponseToChannels());
 	NewComponent->SetEnableGravity(true);
 	NewComponent->SetSimulatePhysics(OldComponent->IsSimulatingPhysics());
 	NewComponent->SetGenerateOverlapEvents(true);

@@ -214,6 +214,8 @@ void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableCompone
 	);
 	OutputProceduralMesh->SetGenerateOverlapEvents(true);
 	OutputProceduralMesh->SetEnableGravity(true);
+	OutputProceduralMesh->SetCollisionProfileName(CuttableComponent->GetCollisionProfileName());
+	OutputProceduralMesh->SetCollisionResponseToChannels(CuttableComponent->GetCollisionResponseToChannels());
 	OutputProceduralMesh->SetSimulatePhysics(CuttableComponent->IsSimulatingPhysics());
 	OutputProceduralMesh->ComponentTags = CuttableComponent->ComponentTags;
 	OutputProceduralMesh->SetLinearDamping(0.f);
