@@ -7,6 +7,7 @@
 #include "KismetProceduralMeshLibrary.h"
 #include "ProceduralMeshComponent.h"
 
+#include "Regex.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshActor.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -90,7 +91,10 @@ void USlicingBladeComponent::OnBeginOverlap(UPrimitiveComponent* OverlappedComp,
 		return;
 	}
 
+	// Register the End overlap Events
 	OnComponentEndOverlap.AddDynamic(this, &USlicingBladeComponent::OnEndOverlap);
+
+	// Broadcast Slicing Slicing Event Started
 	OnBeginSlicing.Broadcast(OverlappedComp->GetAttachmentRootActor(), OverlappedComp->GetOwner(), CutComponent->GetAttachmentRootActor(), GetWorld()->GetTimeSeconds());
 
 	// Makes the Cutting with Constraints possible, by somwehat disabling Gravity and Physics in a sense without actually deactivating them.
@@ -171,7 +175,8 @@ void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableCompone
 {
 	TArray<FStaticMaterial> ComponentMaterials;
 	UMaterialInterface* InsideCutMaterialInterface = nullptr;
-	
+	static uint32 slice_count;
+
 	FString OriginalName = CuttableComponent->GetOwner()->GetName();
 	USceneComponent* ParentComponent = CuttableComponent->GetAttachParent();
 	TArray<FName> OriginalTags = CuttableComponent->GetOwner()->Tags;
@@ -242,9 +247,26 @@ void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableCompone
 		newSlice->AttachToComponent(ParentComponent, attachRules);
 		transformedObject->AttachToComponent(ParentComponent, attachRules);
 	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *transformedObject->GetName());
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *newSlice->GetName());
+
+
+	FString ObjNameA = transformedObject->GetName();
+	FString ObjNameB = transformedObject->GetName();
+
+	ObjNameA.AppendInt(slice_count);
+	slice_count++;
+	ObjNameB.AppendInt(slice_count);
+	slice_count++;
 
 	transformedObject->Tags = OriginalTags;
+	transformedObject->Rename(*ObjNameA);
 	newSlice->Tags = OriginalTags;
+	newSlice->Rename(*ObjNameB);
+
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *transformedObject->GetName());
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *newSlice->GetName());
 
 	// Broadcat creation of Slice and transformed object
 	OnObjectCreation.Broadcast(transformedObject, newSlice, GetWorld()->GetTimeSeconds());
