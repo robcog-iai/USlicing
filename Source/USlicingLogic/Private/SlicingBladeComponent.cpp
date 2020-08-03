@@ -225,9 +225,6 @@ void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableCompone
 	OutputProceduralMesh->ComponentTags = CuttableComponent->ComponentTags;
 	OutputProceduralMesh->SetLinearDamping(0.f);
 	OutputProceduralMesh->SetAngularDamping(0.f);
-	
-	// Hack
-	OutputProceduralMesh->AddWorldOffset(-1*SlicingObject->GetUpVector(), false);
 
 	CuttableComponent->SetLinearDamping(0.f);
 	CuttableComponent->SetAngularDamping(0.f);
@@ -248,10 +245,6 @@ void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableCompone
 		transformedObject->AttachToComponent(ParentComponent, attachRules);
 	}
 	
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *transformedObject->GetName());
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *newSlice->GetName());
-
-
 	FString ObjNameA = transformedObject->GetName();
 	FString ObjNameB = transformedObject->GetName();
 
@@ -262,11 +255,8 @@ void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableCompone
 
 	transformedObject->Tags = OriginalTags;
 	transformedObject->Rename(*ObjNameA);
-	newSlice->Tags = OriginalTags;
+	newSlice->Tags = OriginalTags; 
 	newSlice->Rename(*ObjNameB);
-
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *transformedObject->GetName());
-	UE_LOG(LogTemp, Warning, TEXT("%s"), *newSlice->GetName());
 
 	// Broadcat creation of Slice and transformed object
 	OnObjectCreation.Broadcast(transformedObject, newSlice, GetWorld()->GetTimeSeconds());
