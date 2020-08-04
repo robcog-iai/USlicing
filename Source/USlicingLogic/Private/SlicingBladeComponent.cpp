@@ -7,7 +7,6 @@
 #include "KismetProceduralMeshLibrary.h"
 #include "ProceduralMeshComponent.h"
 
-#include "Regex.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshActor.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -36,7 +35,6 @@ void USlicingBladeComponent::BeginPlay()
 	
 }
 
-#pragma optimize("", off)
 void USlicingBladeComponent::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
@@ -169,7 +167,6 @@ void USlicingBladeComponent::OnEndOverlap(UPrimitiveComponent* OverlappedComp, A
 
 	bLockOverlapEvents = false;
 }
-#pragma optimize("", on)
 
 void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableComponent)
 {
@@ -270,7 +267,6 @@ void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableCompone
 
 	// Broadcast destruction of object
 	OnObjectDestruction.Broadcast(CutComponent->GetAttachmentRootActor(), GetWorld()->GetTimeSeconds());
-
 }
 
 // Resets everything to the state the component was in before the dampening was set
