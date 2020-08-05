@@ -50,7 +50,6 @@ AStaticMeshActor* FSlicingHelper::ConvertProceduralComponentToStaticMeshActor(
 	UStaticMesh* StaticMesh = GenerateStaticMesh(ProceduralMeshComponent, MaterialIndex);
 	// Set the static materials gotten from the old static mesh
 	StaticMesh->StaticMaterials = StaticMaterials;
-
 	AStaticMeshActor* StaticMeshActor = SpawnStaticMeshActor(ProceduralMeshComponent);
 
 	// Edit the StaticMeshComponent to have the same properties as the old ProceduralMeshComponent
@@ -60,7 +59,7 @@ AStaticMeshActor* FSlicingHelper::ConvertProceduralComponentToStaticMeshActor(
 
 	// Move actor's location to current mesh origin
 	StaticMeshActor->SetActorLocation(ProceduralMeshComponent->Bounds.Origin);
-	
+
 	// Remove the old component
 	ProceduralMeshComponent->DestroyComponent();
 
@@ -89,9 +88,10 @@ void FSlicingHelper::CorrectProperties(UPrimitiveComponent* NewComponent, UPrimi
 {
 	NewComponent->SetRelativeTransform(OldComponent->GetRelativeTransform());
 	NewComponent->RegisterComponent();
-	NewComponent->SetCollisionProfileName(FName("PhysicsActor"));
+	NewComponent->SetCollisionProfileName(OldComponent->GetCollisionProfileName());
+	NewComponent->SetCollisionResponseToChannels(OldComponent->GetCollisionResponseToChannels());
 	NewComponent->SetEnableGravity(true);
-	NewComponent->SetSimulatePhysics(true);
+	NewComponent->SetSimulatePhysics(OldComponent->IsSimulatingPhysics());
 	NewComponent->SetGenerateOverlapEvents(true);
 	NewComponent->ComponentTags = OldComponent->ComponentTags;
 }

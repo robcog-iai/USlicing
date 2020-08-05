@@ -32,6 +32,10 @@ public:
 	
 	//* The component of the object, the SlicingComponent is attached to
 	UStaticMeshComponent* SlicingObject;
-	//* The object that is currently being cut, but did not go through the slicing process yet
+
+	//* The component that is currently being cut, but did not go through the slicing process yet
 	UPrimitiveComponent* CutComponent;
+
+	//* The actor that is currently being cut, but did not go through the slicing process yet
+	AActor* CutActor;
 };

@@ -32,22 +32,38 @@ void USlicingBladeComponent::BeginPlay()
 
 	// Register the overlap events
 	OnComponentBeginOverlap.AddDynamic(this, &USlicingBladeComponent::OnBeginOverlap);
-	OnComponentEndOverlap.AddDynamic(this, &USlicingBladeComponent::OnEndOverlap);
+	
 }
 
 void USlicingBladeComponent::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{	
+{
+	if (bLockOverlapEvents) {
+		return;
+	}
+	bLockOverlapEvents = true;
+
 	// This event is only important if the other object can actually be cut or if another cut hasn't already started
 	if (!OtherComp->ComponentHasTag(TagCuttable) || bIsCurrentlyCutting)
 	{
+		bLockOverlapEvents = false;
 		return;
 	}
 	// If we are trying to start cutting with the tip, the slicing process should never start
 	else if (TipComponent != NULL && OtherComp == TipComponent->OverlappedComponent)
 	{
+		bLockOverlapEvents = false;
 		return;
 	}
+
+	if (OtherComp == NULL || OverlappedComp == NULL) {
+		bLockOverlapEvents = false;
+		return;
+	}
+
+	// The cutting process has now started
+	// Quickly avoid other objects to enter slicing event
+	bIsCurrentlyCutting = true;
 
 	// Collision should only be ignored with the currently cut object, not the objects around it
 	SlicingObject->SetCollisionResponseToChannel(ECollisionChannel::ECC_PhysicsBody, ECollisionResponse::ECR_Overlap);
@@ -62,11 +78,21 @@ void USlicingBladeComponent::OnBeginOverlap(UPrimitiveComponent* OverlappedComp,
 	// Have to check for null, as it randomly sets it to null for no reason...
 	if (CutComponent == NULL)
 	{
+		bLockOverlapEvents = false;
 		return;
 	}
 
-	// The cutting process has now started
-	bIsCurrentlyCutting = true;
+	// Abort if not overlapping anymore
+	if (!OverlappedComp->IsOverlappingComponent(OtherComp)) {
+		bIsCurrentlyCutting = false;
+		bLockOverlapEvents = false;
+		return;
+	}
+
+	// Register the End overlap Events
+	OnComponentEndOverlap.AddDynamic(this, &USlicingBladeComponent::OnEndOverlap);
+
+	// Broadcast Slicing Slicing Event Started
 	OnBeginSlicing.Broadcast(OverlappedComp->GetAttachmentRootActor(), OverlappedComp->GetOwner(), CutComponent->GetAttachmentRootActor(), GetWorld()->GetTimeSeconds());
 
 	// Makes the Cutting with Constraints possible, by somwehat disabling Gravity and Physics in a sense without actually deactivating them.
@@ -82,21 +108,30 @@ void USlicingBladeComponent::OnBeginOverlap(UPrimitiveComponent* OverlappedComp,
 	}
 
 	SetUpConstrains(CutComponent);
+
+	bLockOverlapEvents = false;
 }
 
 void USlicingBladeComponent::OnEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
+	if (bLockOverlapEvents) {
+		return;
+	}
+	bLockOverlapEvents = true;
+
 	// The slicing should only happen if you are actually in the cutting process
 	if (!bIsCurrentlyCutting)
 	{
 		ResetResistance();
 		ResetState();
+		bLockOverlapEvents = false;
 		return;
 	}
 	// If you are touching and exiting another object while cutting, ignore the event
-	else if (OtherComp != CutComponent)
+	else if (OtherComp != CutComponent || OtherActor != CutComponent->GetOwner())
 	{
+		bLockOverlapEvents = false;
 		return;
 	}
 	// If the SlicingObject is pulled out, the cutting should not be continued
@@ -106,6 +141,7 @@ void USlicingBladeComponent::OnEndOverlap(UPrimitiveComponent* OverlappedComp, A
 		OnEndSlicingFail.Broadcast(OverlappedComp->GetAttachmentRootActor(), CutComponent->GetAttachmentRootActor(), GetWorld()->GetTimeSeconds());
 		ResetResistance();
 		ResetState();
+		bLockOverlapEvents = false;
 		return;
 	}
 
@@ -118,6 +154,7 @@ void USlicingBladeComponent::OnEndOverlap(UPrimitiveComponent* OverlappedComp, A
 		OnEndSlicingFail.Broadcast(OverlappedComp->GetAttachmentRootActor(), CutComponent->GetAttachmentRootActor(), GetWorld()->GetTimeSeconds());
 		ResetResistance();
 		ResetState();
+		bLockOverlapEvents = false;
 		return;
 	}
 
@@ -127,13 +164,24 @@ void USlicingBladeComponent::OnEndOverlap(UPrimitiveComponent* OverlappedComp, A
 	SliceComponent(OtherComp);
 
 	ResetState();
+
+	bLockOverlapEvents = false;
 }
 
 void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableComponent)
 {
 	TArray<FStaticMaterial> ComponentMaterials;
 	UMaterialInterface* InsideCutMaterialInterface = nullptr;
-	
+	static uint32 slice_count;
+
+	FString OriginalName = CuttableComponent->GetOwner()->GetName();
+	USceneComponent* ParentComponent = CuttableComponent->GetAttachParent();
+	TArray<FName> OriginalTags = CuttableComponent->GetOwner()->Tags;
+
+	if (ParentComponent != NULL) {
+		CuttableComponent->DetachFromParent(true);
+	}
+
 	// In case the component is a StaticMeshComponent it needs to be converted into a ProceduralMeshComponent
 	if (CuttableComponent->IsA(UStaticMeshComponent::StaticClass()))
 	{
@@ -154,7 +202,8 @@ void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableCompone
 			break;
 		}
 	}
-	
+	UProceduralMeshComponent* proc = (UProceduralMeshComponent*)CuttableComponent;
+
 	UProceduralMeshComponent* OutputProceduralMesh;
 	UKismetProceduralMeshLibrary::SliceProceduralMesh(
 		(UProceduralMeshComponent*)CuttableComponent,
@@ -167,18 +216,44 @@ void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableCompone
 	);
 	OutputProceduralMesh->SetGenerateOverlapEvents(true);
 	OutputProceduralMesh->SetEnableGravity(true);
-	OutputProceduralMesh->SetSimulatePhysics(true);
+	OutputProceduralMesh->SetCollisionProfileName(CuttableComponent->GetCollisionProfileName());
+	OutputProceduralMesh->SetCollisionResponseToChannels(CuttableComponent->GetCollisionResponseToChannels());
+	OutputProceduralMesh->SetSimulatePhysics(CuttableComponent->IsSimulatingPhysics());
 	OutputProceduralMesh->ComponentTags = CuttableComponent->ComponentTags;
 	OutputProceduralMesh->SetLinearDamping(0.f);
 	OutputProceduralMesh->SetAngularDamping(0.f);
 
 	CuttableComponent->SetLinearDamping(0.f);
 	CuttableComponent->SetAngularDamping(0.f);
+	proc = (UProceduralMeshComponent*)CuttableComponent;
 
 	// Convert both seperated procedural meshes into static meshes for best compatibility
-	auto transformedObject = FSlicingHelper::ConvertProceduralComponentToStaticMeshActor((UProceduralMeshComponent*)CuttableComponent,
+	AStaticMeshActor* transformedObject = FSlicingHelper::ConvertProceduralComponentToStaticMeshActor((UProceduralMeshComponent*)CuttableComponent,
 		ComponentMaterials);
-	auto newSlice = FSlicingHelper::ConvertProceduralComponentToStaticMeshActor(OutputProceduralMesh, ComponentMaterials);
+	AStaticMeshActor* newSlice = FSlicingHelper::ConvertProceduralComponentToStaticMeshActor(OutputProceduralMesh, ComponentMaterials);
+	if (ParentComponent != NULL) {
+		FAttachmentTransformRules attachRules = FAttachmentTransformRules(
+			EAttachmentRule::KeepWorld,
+			EAttachmentRule::KeepWorld,
+			EAttachmentRule::KeepWorld,
+			true);
+
+		newSlice->AttachToComponent(ParentComponent, attachRules);
+		transformedObject->AttachToComponent(ParentComponent, attachRules);
+	}
+	
+	FString ObjNameA = transformedObject->GetName();
+	FString ObjNameB = transformedObject->GetName();
+
+	ObjNameA.AppendInt(slice_count);
+	slice_count++;
+	ObjNameB.AppendInt(slice_count);
+	slice_count++;
+
+	transformedObject->Tags = OriginalTags;
+	transformedObject->Rename(*ObjNameA);
+	newSlice->Tags = OriginalTags; 
+	newSlice->Rename(*ObjNameB);
 
 	// Broadcat creation of Slice and transformed object
 	OnObjectCreation.Broadcast(transformedObject, newSlice, GetWorld()->GetTimeSeconds());
@@ -192,7 +267,6 @@ void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableCompone
 
 	// Broadcast destruction of object
 	OnObjectDestruction.Broadcast(CutComponent->GetAttachmentRootActor(), GetWorld()->GetTimeSeconds());
-
 }
 
 // Resets everything to the state the component was in before the dampening was set
@@ -213,7 +287,7 @@ void USlicingBladeComponent::ResetState()
 {
 	bIsCurrentlyCutting = false;
 	CutComponent = nullptr;
-
+	OnComponentEndOverlap.Clear();
 	ConstraintOne->BreakConstraint();
 
 	// Collision should turn back to normal again
