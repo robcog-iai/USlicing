@@ -8,7 +8,6 @@
 #include "ProceduralMeshComponent.h"
 
 #include "Engine/StaticMesh.h"
-#include "Engine/StaticMeshActor.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Runtime/Engine/Classes/PhysicsEngine/PhysicsConstraintComponent.h"
 
@@ -38,26 +37,26 @@ void USlicingBladeComponent::BeginPlay()
 void USlicingBladeComponent::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	if (bLockOverlapEvents) {
+	// Check an overlapping event is not happening 
+	if (!LockOverlapEvents()) {
 		return;
 	}
-	bLockOverlapEvents = true;
 
 	// This event is only important if the other object can actually be cut or if another cut hasn't already started
 	if (!OtherComp->ComponentHasTag(TagCuttable) || bIsCurrentlyCutting)
 	{
-		bLockOverlapEvents = false;
+		UnLockOverlapEvents();
 		return;
 	}
 	// If we are trying to start cutting with the tip, the slicing process should never start
 	else if (TipComponent != NULL && OtherComp == TipComponent->OverlappedComponent)
 	{
-		bLockOverlapEvents = false;
+		UnLockOverlapEvents();
 		return;
 	}
 
 	if (OtherComp == NULL || OverlappedComp == NULL) {
-		bLockOverlapEvents = false;
+		UnLockOverlapEvents();
 		return;
 	}
 
@@ -78,14 +77,14 @@ void USlicingBladeComponent::OnBeginOverlap(UPrimitiveComponent* OverlappedComp,
 	// Have to check for null, as it randomly sets it to null for no reason...
 	if (CutComponent == NULL)
 	{
-		bLockOverlapEvents = false;
+		UnLockOverlapEvents();
 		return;
 	}
 
 	// Abort if not overlapping anymore
 	if (!OverlappedComp->IsOverlappingComponent(OtherComp)) {
 		bIsCurrentlyCutting = false;
-		bLockOverlapEvents = false;
+		UnLockOverlapEvents();
 		return;
 	}
 
@@ -109,29 +108,29 @@ void USlicingBladeComponent::OnBeginOverlap(UPrimitiveComponent* OverlappedComp,
 
 	SetUpConstrains(CutComponent);
 
-	bLockOverlapEvents = false;
+	UnLockOverlapEvents();
 }
 
 void USlicingBladeComponent::OnEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	if (bLockOverlapEvents) {
+	// Check an overlapping event is not happening 
+	if (!LockOverlapEvents()) {
 		return;
 	}
-	bLockOverlapEvents = true;
 
 	// The slicing should only happen if you are actually in the cutting process
 	if (!bIsCurrentlyCutting)
 	{
 		ResetResistance();
 		ResetState();
-		bLockOverlapEvents = false;
+		UnLockOverlapEvents();
 		return;
 	}
 	// If you are touching and exiting another object while cutting, ignore the event
 	else if (OtherComp != CutComponent || OtherActor != CutComponent->GetOwner())
 	{
-		bLockOverlapEvents = false;
+		UnLockOverlapEvents();
 		return;
 	}
 	// If the SlicingObject is pulled out, the cutting should not be continued
@@ -141,7 +140,7 @@ void USlicingBladeComponent::OnEndOverlap(UPrimitiveComponent* OverlappedComp, A
 		OnEndSlicingFail.Broadcast(OverlappedComp->GetAttachmentRootActor(), CutComponent->GetAttachmentRootActor(), GetWorld()->GetTimeSeconds());
 		ResetResistance();
 		ResetState();
-		bLockOverlapEvents = false;
+		UnLockOverlapEvents();
 		return;
 	}
 
@@ -154,7 +153,7 @@ void USlicingBladeComponent::OnEndOverlap(UPrimitiveComponent* OverlappedComp, A
 		OnEndSlicingFail.Broadcast(OverlappedComp->GetAttachmentRootActor(), CutComponent->GetAttachmentRootActor(), GetWorld()->GetTimeSeconds());
 		ResetResistance();
 		ResetState();
-		bLockOverlapEvents = false;
+		UnLockOverlapEvents();
 		return;
 	}
 
@@ -165,16 +164,13 @@ void USlicingBladeComponent::OnEndOverlap(UPrimitiveComponent* OverlappedComp, A
 
 	ResetState();
 
-	bLockOverlapEvents = false;
+	UnLockOverlapEvents();
 }
 
 void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableComponent)
 {
 	TArray<FStaticMaterial> ComponentMaterials;
 	UMaterialInterface* InsideCutMaterialInterface = nullptr;
-	static uint32 slice_count;
-
-	FString OriginalName = CuttableComponent->GetOwner()->GetName();
 	USceneComponent* ParentComponent = CuttableComponent->GetAttachParent();
 	TArray<FName> OriginalTags = CuttableComponent->GetOwner()->Tags;
 
@@ -242,18 +238,13 @@ void USlicingBladeComponent::SliceComponent(UPrimitiveComponent* CuttableCompone
 		transformedObject->AttachToComponent(ParentComponent, attachRules);
 	}
 	
-	FString ObjNameA = transformedObject->GetName();
-	FString ObjNameB = transformedObject->GetName();
+	// Add consecutive slice number to names so they do not repeat
+	EnsureConsecutiveName(transformedObject);
+	EnsureConsecutiveName(newSlice);
 
-	ObjNameA.AppendInt(slice_count);
-	slice_count++;
-	ObjNameB.AppendInt(slice_count);
-	slice_count++;
-
+	// Add original object tags
+	newSlice->Tags = OriginalTags;
 	transformedObject->Tags = OriginalTags;
-	transformedObject->Rename(*ObjNameA);
-	newSlice->Tags = OriginalTags; 
-	newSlice->Rename(*ObjNameB);
 
 	// Broadcat creation of Slice and transformed object
 	OnObjectCreation.Broadcast(transformedObject, newSlice, GetWorld()->GetTimeSeconds());
@@ -323,4 +314,35 @@ void USlicingBladeComponent::SetUpConstrains(UPrimitiveComponent* CuttableCompon
 	ConstraintOne->ConstraintInstance.DisableParentDominates();
 
 	ConstraintOne->UpdateConstraintFrames();
+}
+
+void USlicingBladeComponent::EnsureConsecutiveName(AStaticMeshActor* Actor) {
+	
+	static uint32 slice_count;
+
+	FString ObjName = Actor->GetName();
+	int32 index = ObjName.Find("_C", ESearchCase::CaseSensitive, ESearchDir::FromEnd);
+	if (index != -1) {
+		ObjName = ObjName.Left(index+2);
+	}
+	else {
+		ObjName.Append("_C");
+	}
+	ObjName.AppendInt(slice_count);
+	Actor->Rename(*ObjName);
+	slice_count++;
+}
+
+bool USlicingBladeComponent::LockOverlapEvents() {
+
+	if (bLockOverlapEvents) 
+		return false;
+	
+	bLockOverlapEvents = true;
+
+	return true;
+}
+
+void USlicingBladeComponent::UnLockOverlapEvents() {
+	bLockOverlapEvents = false;
 }

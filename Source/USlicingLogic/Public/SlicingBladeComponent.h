@@ -3,7 +3,7 @@
 #pragma once
 
 #include "SlicingComponent.h"
-
+#include "Engine/StaticMeshActor.h"
 #include "SlicingBladeComponent.generated.h"
 
 class USlicingTipComponent;
@@ -37,6 +37,9 @@ class USLICINGLOGIC_API USlicingBladeComponent: public USlicingComponent
 {
 	GENERATED_BODY()
 
+	//* Describes whether overlap events are blocked for new events or not
+	bool bLockOverlapEvents = false;
+
 public:
 	FBeginSlicingSignature OnBeginSlicing;
 	FEndSlicingOnFailSignature OnEndSlicingFail;
@@ -55,8 +58,6 @@ public:
 	//* Describes whether the cutting object is currently in the process of cutting a cuttable object
 	bool bIsCurrentlyCutting = false;
 
-	bool bLockOverlapEvents = false;
-
 	// The Constraints Component
 	UPhysicsConstraintComponent* ConstraintOne;
 
@@ -67,13 +68,11 @@ public:
 	FVector RelativeLocationToCutComponent;
 	FQuat RelativeRotationToCutComponent;
 
-	/**** Attached parent in case object was attached ****/
-	USceneComponent* ParentComponent;
-
 	/**** Implementation of the overlap events for slicing/aborting the slicing ****/
 	UFUNCTION()
 	void OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp,	int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
 	UFUNCTION()
 	void OnEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
@@ -84,4 +83,7 @@ private:
 	void ResetResistance();
 	void ResetState();
 	void SetUpConstrains(UPrimitiveComponent* CuttableComponent);
+	void EnsureConsecutiveName(AStaticMeshActor* Actor);
+	bool LockOverlapEvents();
+	void UnLockOverlapEvents();
 };
