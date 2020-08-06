@@ -36,6 +36,4 @@ public:
 	//* The component that is currently being cut, but did not go through the slicing process yet
 	UPrimitiveComponent* CutComponent;
 
-	//* The actor that is currently being cut, but did not go through the slicing process yet
-	AActor* CutActor;
 };
